@@ -7,14 +7,9 @@ let relativeDays = 182; // days to search back
 let markers = [];
 
 function onMapClick(e) {
-    let popup = L.popup();
-
-    popup
-        .setLatLng(e.latlng)
-        .setContent("You clicked the map at " + e.latlng.toString())
-        .openOn(map);
-
-    querySeattleSocrata(e.latlng.lat, e.latlng.lng);
+    if (markers.length === 0) {
+        querySeattleSocrata(e.latlng.lat, e.latlng.lng);
+    }
 }
 
 /*
@@ -66,6 +61,7 @@ function makeMarkers(events) {
 
     events.forEach(event => {
         let newMarker = L.marker([event.latitude, event.longitude], {title: event.offense});
+        newMarker.bindPopup(`<b>${event.offense}</b><br>${event.offense_start_datetime}<br>${event._100_block_address}`)
         markers.push(newMarker);
         newMarker.addTo(map);
     });
