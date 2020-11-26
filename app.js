@@ -3,8 +3,10 @@ const SOCRATA_ENDPOINT = 'https://data.seattle.gov/resource/tazs-3rd5.json'
 
 let map;
 let radius = 500; // feet radius to search
-let relativeDays = 182; // days to search back
+let relativeYears = 3; // years to search back
 let markers = [];
+let bounds = [];
+let markerGroup;
 
 function onMapClick(e) {
     if (markers.length === 0) {
@@ -37,9 +39,10 @@ function querySeattleSocrata(lat, lng) {
     const max = addToLatLng(lat, lng, radius, radius);
     const min = addToLatLng(lat, lng, -radius, -radius);
 
-    //const datequery = `AND to_fixed_timestamp( '2020-01-01T00:00:00Z' ) < to_fixed_timestamp( offense_start_datetime , '%Y-%m-%d %H:%M:%S' )`
-    const where = `$where=latitude <= ${max.lat} AND longitude <= ${max.lng} AND latitude >= ${min.lat} AND longitude >= ${min.lng}`;
-    // const query = SOCRATA_ENDPOINT + '?report_number=2011-409287';
+    //const datequery = `AND to_fixed_timestamp( '2020-01-01T00:00:00Z' ) <
+    // to_fixed_timestamp( offense_start_datetime , '%Y-%m-%d %H:%M:%S' )`
+    const where = `$where=latitude <= ${max.lat} AND longitude <= ${max.lng} ` +
+        `AND latitude >= ${min.lat} AND longitude >= ${min.lng}`;
     const order = '$order=offense_start_datetime DESC'
     const query = SOCRATA_ENDPOINT + '?' + where + '&' + order;
 
@@ -47,24 +50,93 @@ function querySeattleSocrata(lat, lng) {
     console.log(encodeURI(query));
     fetch(encodeURI(query))
         .then(res => res.json())
-        .then((out) => {
-            makeMarkers(out);
+        .then((events) => {
+            const eventsMap = processEvents(events);
+            makeMarkers(eventsMap);
+            makeBounds(min, max);
         })
         .catch(err => { throw err });
 }
 
-function makeMarkers(events) {
-    console.log('Checkout this JSON! ', events);
+function filterEvents(events, relativeYears) {
+    let output = [];
+    events.forEach(event => {
+        const startDate = moment(event.offense_start_datetime);
+        const minDate = moment().subtract(relativeYears, 'years');
+        if (startDate >= minDate) {
+            output.push(event);
+        }
+    })
+    return output;
+}
+
+// Returns a map of event report_numbers to the events.
+function processEvents(events) {
+    // First filter out any events not expected.
+    events = filterEvents(events, relativeYears);
+
+    // Stores all events groupd by the report_number
+    let eventMap = {};
+    events.forEach(event => {
+       if (eventMap[event.report_number]) {
+           eventMap[event.report_number].push(event);
+       } else {
+           eventMap[event.report_number] = [event];
+       }
+    });
+    return eventMap;
+}
+
+function makeMarkers(eventMap) {
+    console.log(eventMap);
     markers.forEach(marker => map.removeLayer(marker));
     markers = [];
 
+    if (markerGroup) {
+        map.removeLayer(markerGroup);
+    }
+    markerGroup = L.markerClusterGroup();
 
-    events.forEach(event => {
-        let newMarker = L.marker([event.latitude, event.longitude], {title: event.offense});
-        newMarker.bindPopup(`<b>${event.offense}</b><br>${event.offense_start_datetime}<br>${event._100_block_address}`)
-        markers.push(newMarker);
-        newMarker.addTo(map);
-    });
+
+    for (const eventReportNumber in eventMap) {
+        let newMarker;
+
+        if (eventMap[eventReportNumber].length === 1) {
+            const event = eventMap[eventReportNumber][0];
+            newMarker = L.marker([event.latitude, event.longitude], {title: eventReportNumber});
+            newMarker.bindPopup(`<b alt>${event.offense} - ${eventReportNumber}</b><br>${event.offense_start_datetime}<br>${event._100_block_address}`)
+        } else {
+            let offenseStrings = '';
+            for (const event of eventMap[eventReportNumber]) {
+                if (!newMarker) {
+                    newMarker = L.marker([event.latitude, event.longitude], {title: eventReportNumber})
+                } else {
+                    offenseStrings += `<hr>`
+                }
+                offenseStrings += `<b>${event.offense} - ${eventReportNumber}</b><br>${event.offense_start_datetime}<br>${event._100_block_address}`
+            }
+            if (newMarker) {
+                newMarker.bindPopup(offenseStrings);
+            }
+        }
+
+        if (newMarker) {
+            markers.push(newMarker);
+            markerGroup.addLayer(newMarker);
+        }
+    }
+
+    map.addLayer(markerGroup);
+}
+
+function makeBounds(minLatLng, maxLatLng) {
+    bounds.forEach(bound => map.removeLayer(bound));
+    bounds = [];
+
+    let newBound = L.rectangle([minLatLng, maxLatLng], {color: "#ff6e6e", weight: 3, fillOpacity: 0.15, interactive: false});
+    bounds.push(newBound);
+    map.flyToBounds(newBound, { padding: [48, 48], duration: 0.5 });
+    newBound.addTo(map)
 }
 
 
