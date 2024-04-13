@@ -11,4 +11,26 @@ html, body, #mapid {
 
 #title {
     margin: 4px 16px;
+    display: block;
+    font-family: "Helvetica"
+}
+
+h1 {
+  font-size: 2em;
+  margin: 1px;
+}
+h2 {
+  font-size: 1em;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  font:  25px/22px Tahoma, Verdana, sans-serif;
+  width: 20px;
+  height: 20px;
+  padding: 4px;
+}
+
+.leaflet-popup-content {
+  margin: 1.6750em 1.3750em 0.8125em 0.8125em;
+  line-height: 1.4;
 }
