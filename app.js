@@ -140,11 +140,12 @@ function init() {
 
   L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
     attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-    maxZoom: 20,
+    minZoom: 11,
+    maxZoom: 19,
     id: 'mapbox/streets-v11',
     tileSize: 512,
     zoomOffset: -1,
-    accessToken: 'pk.eyJ1IjoiYXN5bmNsaW5rIiwiYSI6ImNraHd5cm5jOTAwNnUyeHBjeXJrOHB5NTkifQ.v5a6KbFQHti809og2pxSRw'
+    accessToken: 'pk.eyJ1IjoiYXN5bmNsaW5rMSIsImEiOiJjbHhxeXB5cmkwZzIwMmlxN3A4ZWJ4NWV4In0.ZcpWR3y2hmxX9svxo8j4mg'
   }).addTo(map);
 
   // Map handlers
