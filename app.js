@@ -137,15 +137,19 @@ function makeBounds(minLatLng, maxLatLng) {
 
 function init() {
   map = L.map('mapid').setView([47.6072, -122.3321], 12);
+  let accessToken = getRandomString([
+    'pk.eyJ1IjoiYXN5bmNsaW5rMiIsImEiOiJjbHkwdHJndW4wdHR2MmtvbHMzZGc5bm1wIn0.XbczWvlJj46Sb5kPJghUNA',
+    'pk.eyJ1IjoiYXN5bmNsaW5rMSIsImEiOiJjbHhxeXB5cmkwZzIwMmlxN3A4ZWJ4NWV4In0.ZcpWR3y2hmxX9svxo8j4mg'
+  ])
 
   L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
     attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
     minZoom: 11,
     maxZoom: 19,
-    id: 'mapbox/streets-v11',
+    id: 'mapbox/streets-v12',
     tileSize: 512,
     zoomOffset: -1,
-    accessToken: 'pk.eyJ1IjoiYXN5bmNsaW5rMSIsImEiOiJjbHhxeXB5cmkwZzIwMmlxN3A4ZWJ4NWV4In0.ZcpWR3y2hmxX9svxo8j4mg'
+    accessToken: accessToken
   }).addTo(map);
 
   // Map handlers
@@ -186,6 +190,10 @@ function addToLatLng(lat, lng, feetY = 0, feetX = 0) {
   return L.latLng(newLat, newLng);
 }
 
+function getRandomString(arr) {
+  const randomIndex = Math.floor(Math.random() * arr.length);
+  return arr[randomIndex];
+}
 
 window.onload = function () {
   init();
