@@ -139,7 +139,8 @@ function init() {
   map = L.map('mapid').setView([47.6072, -122.3321], 12);
   let accessToken = getRandomString([
     'pk.eyJ1IjoiYXN5bmNsaW5rMiIsImEiOiJjbHkwdHJndW4wdHR2MmtvbHMzZGc5bm1wIn0.XbczWvlJj46Sb5kPJghUNA',
-    'pk.eyJ1IjoiYXN5bmNsaW5rMSIsImEiOiJjbHhxeXB5cmkwZzIwMmlxN3A4ZWJ4NWV4In0.ZcpWR3y2hmxX9svxo8j4mg'
+    'pk.eyJ1IjoiYXN5bmNsaW5rMSIsImEiOiJjbHhxeXB5cmkwZzIwMmlxN3A4ZWJ4NWV4In0.ZcpWR3y2hmxX9svxo8j4mg',
+    'pk.eyJ1IjoiYXN5bmNsaW5rIiwiYSI6ImNraHd5cm5jOTAwNnUyeHBjeXJrOHB5NTkifQ.v5a6KbFQHti809og2pxSRw'
   ])
 
   L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
