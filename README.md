@@ -6,7 +6,4 @@ Public data on crimes is not specific to the actual address where the crime occu
 
 # Map Display
 
-This uses Leaflet and Mapbox to display the results in an easy to understand way. Groups together of pins from the same block with info on each individual crimes. 
-
-> [!WARNING]  
-> This website is reaching limits on Mapbox's free API usage limits, due to the popularity of the site now. This website is not funded, and will need to be taken down soon if the demand continues. Please reach out to your local representatives or the Seattle Police Department if you would like an officiall map like this developed.
+This uses Leaflet and OpenStreetMaps to display the results in an easy to understand way. Groups together of pins from the same block with info on each individual crimes. 
