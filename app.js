@@ -1,5 +1,7 @@
 
 const SOCRATA_ENDPOINT = 'https://data.seattle.gov/resource/tazs-3rd5.json'
+// future endpoint: 'https://data.seattle.gov/api/v3/tazs-3rd5/query.json'
+
 
 let map;
 let radius = 500; // feet radius to search
@@ -20,24 +22,27 @@ function onMapClick(e) {
   }
 }
 
-/*
-beat: "C2"
-crime_against_category: "PROPERTY"
-group_a_b: "A"
-latitude: "47.635193980"
-longitude: "-122.284032940"
-mcpp: "MADISON PARK"
-offense: "Theft From Motor Vehicle"
-offense_code: "23F"
-offense_end_datetime: "2020-11-12 01:13:00"
-offense_id: "17610774065"
-offense_parent_group: "LARCENY-THEFT"
-offense_start_datetime: "2020-11-12 01:11:00"
-precinct: "E"
-report_datetime: "2020-11-14 10:12:31"
-report_number: "2020-925762"
-sector: "C"
-_100_block_address: "18XX BLOCK OF 38TH AVE E"
+/* Example response values for event:
+
+"report_number": "2019-009955",
+"report_date_time": "2019-01-08T10:46:00.000",
+"offense_id": "7663504285",
+"offense_date": "2018-12-10T10:00:00.000",
+"nibrs_group_a_b": "A",
+"nibrs_crime_against_category": "PROPERTY",
+"offense_sub_category": "EXTORTION/FRAUD/FORGERY/BRIBERY (INCLUDES BAD CHECKS)",
+"shooting_type_group": "-",
+"block_address": "55XX BLOCK OF 24TH AVE NW",
+"latitude": "47.669068",
+"longitude": "-122.387582",
+"beat": "B1",
+"precinct": "North",
+"sector": "B",
+"neighborhood": "BALLARD SOUTH",
+"reporting_area": "6451",
+"offense_category": "ALL OTHER",
+"nibrs_offense_code_description": "False Pretenses/Swindle/Confidence Game",
+"nibrs_offense_code": "26A"
  */
 
 function querySeattleSocrata(lat, lng) {
@@ -45,12 +50,14 @@ function querySeattleSocrata(lat, lng) {
   const max = addToLatLng(lat, lng, radius, radius);
   const min = addToLatLng(lat, lng, -radius, -radius);
 
-  //const datequery = `AND to_fixed_timestamp( '2020-01-01T00:00:00Z' ) <
-  // to_fixed_timestamp( offense_start_datetime , '%Y-%m-%d %H:%M:%S' )`
-  const where = `$where=latitude <= ${max.lat} AND longitude <= ${max.lng} ` +
-    `AND latitude >= ${min.lat} AND longitude >= ${min.lng}`;
-  const order = '$order=offense_start_datetime DESC'
-  const query = SOCRATA_ENDPOINT + '?' + where + '&' + order;
+  const select = '$select=offense_date,nibrs_offense_code_description,latitude,longitude,report_number,block_address'
+
+  // const datequery = `to_fixed_timestamp( '2020-01-01T00:00:00Z' ) <` +
+  //    `to_fixed_timestamp( offense_date , '%Y-%m-%d %H:%M:%S' )`;
+  const where = `$where=latitude!='REDACTED' AND latitude::number <= ${max.lat} ` +
+    `AND longitude::number <= ${max.lng} AND latitude::number >= ${min.lat} AND longitude::number >= ${min.lng}`;
+  const order = '$order=offense_date DESC'
+  const query = SOCRATA_ENDPOINT + '?' + select + '&' + where + '&' + order;
 
   console.log(query);
   console.log(encodeURI(query));
@@ -67,7 +74,7 @@ function querySeattleSocrata(lat, lng) {
 function filterEvents(events, relativeYears) {
   let output = [];
   events.forEach(event => {
-    const startDate = moment(event.offense_start_datetime);
+    const startDate = moment(event.offense_date);
     const minDate = moment().subtract(relativeYears, 'years');
     if (startDate >= minDate) {
       output.push(event);
@@ -110,10 +117,10 @@ function makeMarkers(eventMap) {
 
     // Always grab first event, to limit duplication of reports with same report number.
     const event = eventMap[eventReportNumber][0];
-    let eventDateTime = moment(event.offense_start_datetime).format("lll");
-    let title = event.offense + ' - ' + eventDateTime;
+    let eventDateTime = moment(event.offense_date).format("lll");
+    let title = event.nibrs_offense_code_description + ' - ' + eventDateTime;
     newMarker = L.marker([event.latitude, event.longitude], { title: title });
-    newMarker.bindPopup(`<b alt>${event.offense}</b><br>Time: ${eventDateTime}<br>Report Number: ${event.report_number}<br>Block: ${event._100_block_address}`)
+    newMarker.bindPopup(`<b alt>${event.nibrs_offense_code_description}</b><br>Time: ${eventDateTime}<br>Report Number: ${event.report_number}<br>Block: ${event.block_address}`)
 
     if (newMarker) {
       markers.push(newMarker);
