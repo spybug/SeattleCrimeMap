@@ -3,6 +3,8 @@ const SOCRATA_ENDPOINT = 'https://data.seattle.gov/resource/tazs-3rd5.json'
 // future endpoint: 'https://data.seattle.gov/api/v3/tazs-3rd5/query.json'
 
 
+// Documentation: https://dev.socrata.com/foundry/data.seattle.gov/tazs-3rd5
+
 let map;
 let radius = 500; // feet radius to search
 let relativeYears = 3; // years to search back
@@ -51,12 +53,12 @@ function querySeattleSocrata(lat, lng) {
   const min = addToLatLng(lat, lng, -radius, -radius);
 
   const select = '$select=offense_date,nibrs_offense_code_description,latitude,longitude,report_number,block_address'
-
-  // const datequery = `to_fixed_timestamp( '2020-01-01T00:00:00Z' ) <` +
-  //    `to_fixed_timestamp( offense_date , '%Y-%m-%d %H:%M:%S' )`;
+  const fixed_timestamp_value = moment().subtract(relativeYears, 'years').format('YYYY-MM-DDTHH:mm:ss.SSS');
   const where = `$where=latitude!='REDACTED' AND latitude::number <= ${max.lat} ` +
-    `AND longitude::number <= ${max.lng} AND latitude::number >= ${min.lat} AND longitude::number >= ${min.lng}`;
+    `AND longitude::number <= ${max.lng} AND latitude::number >= ${min.lat} AND longitude::number >= ${min.lng} ` +
+    `AND offense_date >= '${fixed_timestamp_value}'`;
   const order = '$order=offense_date DESC'
+
   const query = SOCRATA_ENDPOINT + '?' + select + '&' + where + '&' + order;
 
   console.log(query);
@@ -71,23 +73,8 @@ function querySeattleSocrata(lat, lng) {
     .catch(err => { throw err });
 }
 
-function filterEvents(events, relativeYears) {
-  let output = [];
-  events.forEach(event => {
-    const startDate = moment(event.offense_date);
-    const minDate = moment().subtract(relativeYears, 'years');
-    if (startDate >= minDate) {
-      output.push(event);
-    }
-  })
-  return output;
-}
-
 // Returns a map of event report_numbers to the events.
 function processEvents(events) {
-  // First filter out any events not expected.
-  events = filterEvents(events, relativeYears);
-
   // Stores all events groupd by the report_number
   let eventMap = {};
   events.forEach(event => {
