@@ -53,7 +53,13 @@
     padding: 0;
 }
 
-html, body {
+html {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+body {
     height: 100%;
     width: 100%;
     overflow: hidden;
@@ -62,6 +68,8 @@ html, body {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Scrollbar Customization */
@@ -344,7 +352,8 @@ html, body {
 
 /* Main Layout */
 .app-main {
-    height: calc(100% - var(--header-height));
+    flex: 1;
+    min-height: 0;
     display: flex;
     position: relative;
     overflow: hidden;
@@ -818,12 +827,19 @@ html, body {
 .card-meta-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     font-size: 0.725rem;
     color: var(--text-muted);
     margin-top: 4px;
     border-top: 1px solid rgba(255, 255, 255, 0.04);
     padding-top: 4px;
+    gap: 6px;
+}
+
+.card-report-label {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    flex-shrink: 0;
 }
 
 .card-report-num {
@@ -843,6 +859,20 @@ html, body {
 .card-report-num:hover {
     color: var(--accent-sage);
     border-color: var(--accent-sage-border);
+}
+
+/* Seattle City Limits boundary tooltip */
+.seattle-limits-tooltip {
+    background: rgba(23, 36, 32, 0.92) !important;
+    border: 1px solid rgba(74, 222, 128, 0.5) !important;
+    color: #86efac !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+}
+.seattle-limits-tooltip.leaflet-tooltip::before {
+    display: none;
 }
 
 /* Custom Leaflet Map Markers */
@@ -867,6 +897,12 @@ html, body {
     transform: scale(1.25);
     box-shadow: 0 0 0 4px rgba(134, 239, 172, 0.4), 0 6px 16px rgba(0, 0, 0, 0.7);
     z-index: 1000 !important;
+}
+
+.block-marker.card-highlight {
+    transform: scale(1.2);
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.55), 0 6px 16px rgba(0, 0, 0, 0.7);
+    z-index: 999 !important;
 }
 
 /* Marker color tiers */
@@ -913,6 +949,12 @@ html, body {
     transform: scale(1.25);
     border-color: var(--accent-sage);
     box-shadow: 0 0 0 3px rgba(134, 239, 172, 0.5);
+}
+
+.category-sub-marker.card-highlight {
+    transform: scale(1.2);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.5);
 }
 
 .sub-marker-count {
@@ -1106,11 +1148,8 @@ html, body {
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
-    :root {
-        --header-height: auto;
-    }
-
     .app-header {
+        height: auto;
         display: grid;
         grid-template-columns: 1fr auto;
         grid-template-rows: auto auto;
@@ -1144,6 +1183,7 @@ html, body {
     }
 
     .app-main {
+        /* Fill the remaining viewport height below the header */
         flex-direction: column;
         position: relative;
     }

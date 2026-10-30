@@ -23,6 +23,10 @@ let currentFilter = { type: 'none', blockAddress: null, category: null };
 let currentAreaLocationName = '';
 let mapClickDisabled = false;
 
+// Seattle city limits polygon (ring of [lng, lat] pairs) — loaded from GeoJSON
+let seattleLimitsRing = null;
+let seattleLimitsLayer = null;
+
 // Crime Category Definitions & Custom SVG Icons
 const CRIME_CATEGORIES = {
   theft_from_vehicle: {
@@ -293,8 +297,82 @@ function initMap() {
   // Initialize 100% free tiles with zero API keys or rate limits
   initMapTiles();
 
+  // Load and draw the Seattle city limits boundary
+  loadSeattleCityLimits();
+
   // Map click handler to trigger Socrata query
   map.on('click', onMapClick);
+}
+
+/**
+ * Load Seattle city limits GeoJSON, draw a bold green boundary on the map,
+ * and store the polygon ring for point-in-polygon checks.
+ */
+function loadSeattleCityLimits() {
+  fetch('./seattle_city_limits.geojson')
+    .then(res => res.json())
+    .then(geojson => {
+      // Extract the outer ring coordinates ([lng, lat] pairs) for PIP checks
+      const feature = geojson.features && geojson.features[0];
+      if (feature && feature.geometry && feature.geometry.type === 'Polygon') {
+        seattleLimitsRing = feature.geometry.coordinates[0]; // [[lng, lat], ...]
+      }
+
+      // Draw the boundary on the map as a bold permanent green polyline/polygon
+      seattleLimitsLayer = L.geoJSON(geojson, {
+        style: {
+          color: '#22c55e',
+          weight: 3,
+          opacity: 0.85,
+          fillColor: 'transparent',
+          fillOpacity: 0,
+          interactive: false
+        }
+      });
+      seattleLimitsLayer.addTo(map);
+      seattleLimitsLayer.bindTooltip('Seattle City Limits', {
+        permanent: false,
+        sticky: true,
+        className: 'seattle-limits-tooltip',
+        direction: 'top'
+      });
+    })
+    .catch(err => {
+      console.warn('Could not load Seattle city limits boundary:', err);
+    });
+}
+
+/**
+ * Ray-casting point-in-polygon check.
+ * ring: array of [lng, lat] pairs (the outer ring of the city polygon)
+ * lat, lng: the point to test
+ * Returns true if the point is inside the polygon.
+ */
+function isPointInSeattle(lat, lng) {
+  if (!seattleLimitsRing) return true; // If boundary not loaded, allow all points
+  const ring = seattleLimitsRing;
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1]; // lng, lat
+    const xj = ring[j][0], yj = ring[j][1];
+    const intersect = ((yi > lat) !== (yj > lat)) &&
+                      (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Show a brief warning when the user clicks or searches outside Seattle city limits.
+ */
+function showOutsideLimitsWarning() {
+  // Reuse the map status overlay briefly
+  const overlay = document.getElementById('map-status-overlay');
+  const text = document.getElementById('map-status-text');
+  if (!overlay || !text) return;
+  text.textContent = '⚠️ That location is outside Seattle city limits. Please select a point within Seattle.';
+  overlay.hidden = false;
+  setTimeout(() => { overlay.hidden = true; }, 3000);
 }
 
 /**
@@ -330,6 +408,12 @@ function initMapTiles() {
 
 function onMapClick(e) {
   if (mapClickDisabled) return;
+
+  // Reject clicks outside Seattle city limits
+  if (seattleLimitsRing && !isPointInSeattle(e.latlng.lat, e.latlng.lng)) {
+    showOutsideLimitsWarning();
+    return;
+  }
 
   hideMapHint();
   closeSearchDropdown();
@@ -687,7 +771,6 @@ function clearBlockMarkers() {
   blockMarkers = [];
   activeBlockMarker = null;
 }
-
 /**
  * Clear category orbit sub-markers.
  */
@@ -695,6 +778,42 @@ function clearCategorySubMarkers() {
   categorySubMarkers.forEach(m => map.removeLayer(m));
   categorySubMarkers = [];
   activeCategorySubMarker = null;
+}
+
+/**
+ * Highlight the block marker that matches the given blockAddress (from a card click in area view).
+ * Removes any previous card-driven highlight, adds a pulsing ring to the matching marker.
+ */
+function highlightBlockMarker(blockAddress) {
+  blockMarkers.forEach(m => {
+    const el = m.getElement() ? m.getElement().querySelector('.block-marker') : null;
+    if (el) el.classList.remove('card-highlight');
+  });
+
+  // Find the marker whose block address matches
+  const block = blockGroups[blockAddress];
+  if (block && block.marker) {
+    const el = block.marker.getElement() ? block.marker.getElement().querySelector('.block-marker') : null;
+    if (el) el.classList.add('card-highlight');
+  }
+}
+
+/**
+ * Highlight the category sub-marker that matches the given catKey (from a card click in block/category view).
+ */
+function highlightCategorySubMarker(catKey) {
+  categorySubMarkers.forEach(m => {
+    const el = m.getElement() ? m.getElement().querySelector('.category-sub-marker') : null;
+    if (el) el.classList.remove('card-highlight');
+  });
+
+  // Find the sub-marker for this category by inspecting its element's class list
+  categorySubMarkers.forEach(m => {
+    const el = m.getElement() ? m.getElement().querySelector('.category-sub-marker') : null;
+    if (el && el.classList.contains(`cat-${catKey}`)) {
+      el.classList.add('card-highlight');
+    }
+  });
 }
 
 /**
@@ -741,6 +860,11 @@ function resetFilter() {
     if (el) el.classList.remove('is-active');
   }
   activeBlockMarker = null;
+  // Also clear any card-driven highlights
+  blockMarkers.forEach(m => {
+    const el = m.getElement() ? m.getElement().querySelector('.block-marker') : null;
+    if (el) el.classList.remove('card-highlight');
+  });
   setFilter({ type: 'none', blockAddress: null, category: null, crimes: allCrimes });
 }
 
@@ -778,7 +902,7 @@ function renderCrimeCards(crimes) {
     const relativeTime = moment(crime.offense_date).fromNow();
 
     return `
-      <article class="crime-card" data-idx="${idx}" data-block="${escapeHtml(crime.block_address)}" data-lat="${crime.latitude}" data-lng="${crime.longitude}">
+      <article class="crime-card" data-idx="${idx}" data-block="${escapeHtml(crime.block_address)}" data-cat="${escapeHtml(crime.categoryKey)}" data-lat="${crime.latitude}" data-lng="${crime.longitude}">
         <div class="card-icon-col">
           <div class="card-category-icon ${cat.bgClass}" title="${cat.label}">
             ${cat.svg}
@@ -798,7 +922,7 @@ function renderCrimeCards(crimes) {
             <span class="card-relative-time">(${relativeTime})</span>
           </div>
           <div class="card-meta-row">
-            <span class="card-category-label">${cat.label}</span>
+            <span class="card-report-label">Police report number:</span>
             <span class="card-report-num" title="Selectable report number">#${escapeHtml(crime.report_number)}</span>
           </div>
         </div>
@@ -823,6 +947,21 @@ function renderCrimeCards(crimes) {
       const lng = parseFloat(card.getAttribute('data-lng'));
       if (!isNaN(lat) && !isNaN(lng)) {
         map.panTo([lat, lng], { animate: true, duration: 0.4 });
+      }
+
+      // Highlight the appropriate map marker based on current view
+      const blockAddress = card.getAttribute('data-block');
+      const catKey = card.getAttribute('data-cat');
+
+      if (currentFilter.type === 'none') {
+        // Full area view: highlight the block marker for this crime's block
+        highlightBlockMarker(blockAddress);
+      } else if (currentFilter.type === 'block') {
+        // Block view with category sub-markers visible: highlight the category sub-marker
+        highlightCategorySubMarker(catKey);
+      } else if (currentFilter.type === 'category') {
+        // Category-filtered view: highlight the category sub-marker
+        highlightCategorySubMarker(catKey);
       }
     });
   });
@@ -964,6 +1103,15 @@ function renderSearchDropdown(results, originalQuery) {
       const lat = parseFloat(el.getAttribute('data-lat'));
       const lon = parseFloat(el.getAttribute('data-lon'));
       const name = el.getAttribute('data-name');
+
+      // Validate that result is within Seattle city limits
+      if (seattleLimitsRing && !isPointInSeattle(lat, lon)) {
+        closeSearchDropdown();
+        searchInput.value = '';
+        searchInput.placeholder = '⚠️ Location outside Seattle city limits';
+        setTimeout(() => { searchInput.placeholder = 'Search Seattle address or neighborhood...'; }, 3500);
+        return;
+      }
 
       searchInput.value = name;
       closeSearchDropdown();
