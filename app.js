@@ -289,7 +289,7 @@ function initMap() {
   map = L.map('mapid', {
     zoomControl: false,
     tap: false
-  }).setView([47.6072, -122.3321], 13);
+  }).setView([47.6072, -122.3321], 10);
 
   // Reposition zoom controls to bottom-right
   L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -1013,7 +1013,7 @@ function performAddressSearch(query) {
   // Scoped to Seattle & King County
   // Seattle bounding box: min_lon: -122.4597, max_lat: 47.7341, max_lon: -122.2244, min_lat: 47.4955
   let queryWithContext = query;
-  if (!query.toLowerCase().includes('seattle') && !query.toLowerCase().includes('wa')) {
+  if (!query.toLowerCase().includes('seattle')) {
     queryWithContext += ', Seattle, WA';
   }
 
