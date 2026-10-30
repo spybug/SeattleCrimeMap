@@ -372,7 +372,7 @@ function showOutsideLimitsWarning() {
   if (!overlay || !text) return;
   text.textContent = '⚠️ That location is outside Seattle city limits. Please select a point within Seattle.';
   overlay.hidden = false;
-  setTimeout(() => { overlay.hidden = true; }, 3000);
+  setTimeout(() => { overlay.hidden = true; }, 5000);
 }
 
 /**
@@ -1214,22 +1214,85 @@ function initUIHandlers() {
     });
   }
 
-  // Mobile Bottom Drawer Toggle
-  const mobileListToggle = document.getElementById('mobile-list-toggle');
-  const drawerHandle = document.getElementById('drawer-handle');
-  const sidebar = document.getElementById('sidebar');
+// Mobile Bottom Drawer Toggle
+const mobileListToggle = document.getElementById('mobile-list-toggle');
+const drawerHandle = document.getElementById('drawer-handle');
+const sidebar = document.getElementById('sidebar');
 
-  if (mobileListToggle && sidebar) {
-    mobileListToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('is-expanded');
-    });
+// Toggle drawer
+function toggleDrawer() {
+  if (sidebar) {
+    sidebar.classList.toggle('is-expanded');
   }
+}
 
-  if (drawerHandle && sidebar) {
-    drawerHandle.addEventListener('click', () => {
-      sidebar.classList.toggle('is-expanded');
-    });
+// Expand drawer
+function expandDrawer() {
+  if (sidebar) {
+    sidebar.classList.add('is-expanded');
   }
+}
+
+// Collapse drawer
+function collapseDrawer() {
+  if (sidebar) {
+    sidebar.classList.remove('is-expanded');
+  }
+}
+
+// Plain list button in top right
+if (mobileListToggle && sidebar) {
+  mobileListToggle.addEventListener('click', toggleDrawer);
+}
+
+// Drawer handle interactions
+if (drawerHandle && sidebar) {
+  let startY = 0;
+  let startX = 0;
+  let isDragging = false;
+
+  const swipeThreshold = 40; // Minimum swipe distance in pixels
+
+  drawerHandle.addEventListener('pointerdown', (e) => {
+    startY = e.clientY;
+    startX = e.clientX;
+    isDragging = true;
+
+    drawerHandle.setPointerCapture(e.pointerId);
+  });
+
+  drawerHandle.addEventListener('pointerup', (e) => {
+    if (!isDragging) return;
+
+    isDragging = false;
+
+    const deltaY = e.clientY - startY;
+    const deltaX = e.clientX - startX;
+
+    // Only recognize primarily vertical gestures
+    if (Math.abs(deltaY) > swipeThreshold &&
+        Math.abs(deltaY) > Math.abs(deltaX)) {
+
+      if (deltaY < 0) {
+        // Swipe UP: Expand drawer
+        expandDrawer();
+      } else {
+        // Swipe DOWN: Collapse drawer
+        collapseDrawer();
+      }
+    } else if (
+      Math.abs(deltaY) < 10 &&
+      Math.abs(deltaX) < 10
+    ) {
+      // Regular tap: Toggle drawer
+      toggleDrawer();
+    }
+  });
+
+  drawerHandle.addEventListener('pointercancel', () => {
+    isDragging = false;
+  });
+}
 }
 
 /**
