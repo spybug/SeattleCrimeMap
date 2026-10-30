@@ -2,35 +2,216 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="origin-when-cross-origin">
     <title>Seattle Crime Map</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
     <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
     <link rel="manifest" href="./site.webmanifest">
+
+    <!-- Leaflet & MapLibre Stylesheets -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossorigin=""/>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"/>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"/>
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
     <link rel="stylesheet" type="text/css" href="./styles.css"/>
+
+    <!-- Leaflet Core JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin=""></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
+    <!-- MapLibre GL & Leaflet Plugin for OpenFreeMap (100% free vector tiles, no API key, no view quotas) -->
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
+
+    <!-- Utilities & Application Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"
             integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ=="
             crossorigin="anonymous"></script>
-    <script src="./app.js" type="text/javascript"></script>
+    <script src="./app.js" type="text/javascript" defer></script>
 </head>
 <body>
-  <div id="title">
-    <h1>Seattle Crime Map</h1>
-      <h2>
-      <div>
-        <span>Click on a point on the map to load all crimes within 500ft radius within the past 3 years. <a href="https://github.com/spybug/SeattleCrimeMap">Learn more about this site.</a></span>
-      </div>
-    </h2>
-  </div>
-  <div id="mapid"></div>
+    <header class="app-header">
+        <div class="header-brand">
+            <div class="brand-icon">
+                <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                    <line x1="8" y1="2" x2="8" y2="18"></line>
+                    <line x1="16" y1="6" x2="16" y2="22"></line>
+                </svg>
+            </div>
+            <div class="brand-text">
+                <h1 class="brand-title">Seattle Crime Map</h1>
+                <span class="brand-subtitle">500ft Radius · Past 3 Years</span>
+            </div>
+        </div>
+
+        <!-- Address Search Bar -->
+        <div class="search-wrapper">
+            <form id="search-form" class="search-form" role="search" autocomplete="off">
+                <div class="search-input-box">
+                    <span class="search-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </span>
+                    <input type="text"
+                           id="search-input"
+                           class="search-input"
+                           placeholder="Search Seattle address or neighborhood..."
+                           aria-label="Search address or neighborhood in Seattle"
+                           aria-autocomplete="list"
+                           aria-expanded="false"
+                           aria-controls="search-dropdown" />
+                    <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="Clear search input" hidden>
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                    <button type="submit" id="search-submit-btn" class="search-submit-btn" aria-label="Search address">
+                        <span>Search</span>
+                    </button>
+                </div>
+                <!-- Geocoding Dropdown Results -->
+                <div id="search-dropdown" class="search-dropdown" role="listbox" hidden></div>
+            </form>
+        </div>
+
+        <div class="header-actions">
+            <button id="info-btn" class="icon-btn" aria-label="About this map" title="About this map">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+            </button>
+            <button id="mobile-list-toggle" class="mobile-list-toggle-btn" aria-label="Toggle crime list view">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                <span id="mobile-badge" class="mobile-badge">0</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <!-- Leaflet Map Section -->
+        <section id="map-section" class="map-section" aria-label="Map View">
+            <div id="mapid"></div>
+            <div id="map-status-overlay" class="map-status-overlay" hidden>
+                <div class="status-spinner"></div>
+                <span id="map-status-text">Loading Seattle police data...</span>
+            </div>
+            <div id="map-hint" class="map-hint">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span>Click anywhere on the map or search an address above to view crimes within 500ft</span>
+            </div>
+        </section>
+
+        <!-- Right Side Crime List / Mobile Bottom Drawer -->
+        <aside id="sidebar" class="sidebar" aria-label="Crime Details">
+            <div id="drawer-handle" class="drawer-handle" aria-label="Expand or collapse list">
+                <span class="handle-bar"></span>
+            </div>
+
+            <div class="sidebar-header">
+                <div class="sidebar-title-row">
+                    <div class="sidebar-title-wrap">
+                        <h2 id="sidebar-main-title" class="sidebar-title">Crimes in Area</h2>
+                        <span id="sidebar-location-sub" class="sidebar-location-sub" hidden></span>
+                    </div>
+                    <span id="crime-total-badge" class="badge-total">0</span>
+                </div>
+                <!-- Filter status & navigation bar (when a block or category is clicked) -->
+                <div id="filter-bar" class="filter-bar" hidden>
+                    <div class="filter-info">
+                        <span id="filter-icon" class="filter-icon"></span>
+                        <span id="filter-label" class="filter-label">Filtered</span>
+                    </div>
+                    <div class="filter-actions">
+                        <button id="back-to-block-btn" class="nav-back-btn" title="Back to all crimes on this block" hidden>
+                            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
+                            </svg>
+                            <span>Back to Block</span>
+                        </button>
+                        <button id="clear-filter-btn" class="clear-filter-btn" title="Show all crimes in neighborhood">
+                            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
+                            </svg>
+                            <span>All Area Crimes</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="crime-list" class="crime-list" role="feed" aria-busy="false">
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <svg viewBox="0 0 24 24" width="36" height="36" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 8v4"></path>
+                            <path d="M12 16h.01"></path>
+                        </svg>
+                    </div>
+                    <p class="empty-state-title">No area selected</p>
+                    <p class="empty-state-text">Search an address or click a point on the Seattle map to load local crime statistics.</p>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- About / Info Modal -->
+    <dialog id="info-modal" class="info-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>About Seattle Crime Map</h2>
+                <button id="close-modal-btn" class="icon-btn close-btn" aria-label="Close dialog">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>This web application displays historic crime reports in Seattle using the official public <a href="https://data.seattle.gov/Public-Safety/SPD-Crime-Data-2008-Present/tazs-3rd5/about_data" target="_blank" rel="noopener">Seattle Police Department (SPD) Socrata API</a>.</p>
+                
+                <h3>How It Works</h3>
+                <ul>
+                    <li><strong>500ft Radius:</strong> When you search an address or click the map, all crime reports within a 500ft radius over the past 3 years are retrieved.</li>
+                    <li><strong>Block Grouping:</strong> Crime reports in public data are generalized to block addresses (e.g. <em>55XX BLOCK OF 24TH AVE NW</em>) for privacy. Each marker represents a block and shows the total crimes reported there.</li>
+                    <li><strong>Category Breakdown:</strong> Click on any block marker to reveal category sub-markers (Vehicle Theft, Burglary, Fraud, Assault, DUI, Pocket-picking, etc.) and filter the crime list accordingly.</li>
+                </ul>
+
+                <h3>Data Notice</h3>
+                <p class="modal-notice">This independent community tool is not funded or officially endorsed by the City of Seattle or SPD. Developed with ❤️ for Seattle residents and visitors.</p>
+
+                <div class="modal-footer">
+                    <a href="https://github.com/spybug/SeattleCrimeMap" target="_blank" rel="noopener" class="btn-github">
+                        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                        </svg>
+                        <span>View on GitHub</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </dialog>
 </body>
 </html>
