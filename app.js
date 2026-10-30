@@ -1218,6 +1218,7 @@ function initUIHandlers() {
 const mobileListToggle = document.getElementById('mobile-list-toggle');
 const drawerHandle = document.getElementById('drawer-handle');
 const sidebar = document.getElementById('sidebar');
+const sidebarHeader = document.getElementById('sidebar-header');
 
 // Toggle drawer
 function toggleDrawer() {
@@ -1253,15 +1254,14 @@ if (drawerHandle && sidebar) {
 
   const swipeThreshold = 40; // Minimum swipe distance in pixels
 
-  drawerHandle.addEventListener('pointerdown', (e) => {
+  function pointerDown(e) {
     startY = e.clientY;
     startX = e.clientX;
     isDragging = true;
 
     drawerHandle.setPointerCapture(e.pointerId);
-  });
-
-  drawerHandle.addEventListener('pointerup', (e) => {
+  }
+  function pointerUp(e) {
     if (!isDragging) return;
 
     isDragging = false;
@@ -1287,9 +1287,15 @@ if (drawerHandle && sidebar) {
       // Regular tap: Toggle drawer
       toggleDrawer();
     }
-  });
-
+  }
+  drawerHandle.addEventListener('pointerdown', (e) => pointerDown(e));
+  drawerHandle.addEventListener('pointerup', (e) => pointerUp(e));
   drawerHandle.addEventListener('pointercancel', () => {
+    isDragging = false;
+  });
+  sidebarHeader.addEventListener('pointerdown', (e) => pointerDown(e));
+  sidebarHeader.addEventListener('pointerup', (e) => pointerUp(e));
+  sidebarHeader.addEventListener('pointercancel', () => {
     isDragging = false;
   });
 }
