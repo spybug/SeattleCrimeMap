@@ -289,7 +289,7 @@ function initMap() {
   map = L.map('mapid', {
     zoomControl: false,
     tap: false
-  }).setView([47.6072, -122.3321], 10);
+  }).setView([47.6072, -122.3321], 12);
 
   // Reposition zoom controls to bottom-right
   L.control.zoom({ position: 'bottomright' }).addTo(map);
